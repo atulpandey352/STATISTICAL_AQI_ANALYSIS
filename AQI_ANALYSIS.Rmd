@@ -1,0 +1,338 @@
+---
+title: "IMPACT OF COVID LOCKDOWN ON AIR POLLUTANTS - DELHI"
+author: "Atul Pandey"
+date: "05/08/2021"
+output: 
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github 
+    df_print: paged
+
+---
+
+
+
+
+## INTRODUCTION 
+
+<font size = '4'>
+
+On 24 March 2020 , lockdown was imposed on the whole country including DELHI.This exploratory data analysis aims to see how lockdown affected Air quality of DELHI by comparing the data of 2020 with the previous year of the same dates. <br/>
+First i have used the categorical AQI_BUCKET data to see broadly how AQI values were affected . Then i have tried to figure out specifically how the concentration of each pollutant was affected . And finally i did a  statistical test of my observation according to the normality of the data.
+
+</font>
+
+
+```{r basic,include=FALSE}
+library(pander)
+library(lemon)
+library(dplyr)
+library(fpp2)
+library(ggplot2)
+library(reshape2)
+library(plotly)
+library(gridExtra)
+library(ggpubr)
+library(lubridate)
+library(reshape2)
+library(gt)
+
+```
+
+## DATASET
+
+### AIR QUALITY DATA FROM 2019 
+```{r data,echo=FALSE}
+d_19<-read.csv('C:/Users/HP/Desktop/New folder/data_2019.csv')
+knit_print.data.frame <- lemon_print
+d_20<-read.csv('C:/Users/HP/Desktop/New folder/data_2020.csv')
+(head(d_19))
+```
+
+### AIR QUALITY DATA FROM 2020
+```{r dataji,echo=FALSE}
+
+(head(d_20[-29]))
+```
+
+<font size = '4'>
+
++ Data was downloaded from [kaggle.](https://www.kaggle.com/rohanrao/air-quality-data-in-india)
++ The data of 2019 and 2020 was subsetted starting from 1st Feb to 31st May
++ The data set have 17 columns and 120 rows.
++ X is the id of our data , city is delhi and date means date when the data was recorded.
++ The AQI bucket has the labels associated with AQI value of that particular date
++ We have data of 12 pollutants .The pollutant concentration is recorded in their respective column.
+
+</font>
+
+
+
+
+## CATEGORICAL COMPARISON
+
+```{r preprocessing_1,echo=FALSE,out.width="115%",out.height="125%"}
+dc<-rbind(d_19,d_20)
+dc<-dc%>% mutate(years=substring(Date,1,4))
+dc[,3]<- as.Date(dc[,3],format='%Y-%m-%d')
+
+dc<-dc%>% mutate(year=as.Date(paste0(substring(Date,1,4),'-01-31')))
+h<-ggplot(dc, aes(AQI_Bucket, ..count..)) + geom_bar(aes(fill = years), position = "dodge")
+ggplotly(h)
+```
+<font size='4'>
+
++ Here we observe that we have more number of days where AQI has remained moderate and satisfactory. 
++ Air quality was more in the breathable range in 2020 compared to 2019 
+
+</font>
+
+
+
+## COMPARISON OF AQI VALUES
+```{r preprocessing_2,echo=FALSE,out.width="115%",out.height="125%"}
+box_plot<-ggplot(dc,aes(x=years,y=AQI,fill=years)) + geom_boxplot() + 
+            labs(title='AQI COMPARISON',x='Year',y='AQI') + theme_classic()
+
+
+ggplotly(box_plot)
+```
+
+<font size = '4'>
+
++ The boxplot also confirms that AQI has been lower in 2020 as compared to 2019.
++ The data has become skewed in 2020 ( more towards lower side)
++ According to IQR range we have three outliers in our 2020 data.
+
+</font>
+
+
+
+## POLLUTANT SPECIFIC ANALYSIS
+
+```{r preprocessing_3,echo=FALSE,fig.width=11,fig.height=16,warning=FALSE,message=FALSE}
+library(reshape2)
+k<-melt(dc[,c(-2,-16,-17,-19,-20)] , 
+        id.vars = c('X','Date','years'), variable.name = 'pollutant')
+
+line_plot<-ggplot(k, aes(x=Date-as.Date(paste0(years,'-01-31')), y=value,col= years)) +
+  stat_smooth( method = "auto", se = FALSE) + facet_wrap(.~pollutant,ncol=2,scales = 'free')+
+labs(title = '    Pollutant concentration comparison '
+     ,x='Days since 1 feb',
+      y= 'Concentration')+ 
+  theme(plot.title = element_text( size=22, face="bold"),
+        axis.title.x = element_text( size=14),
+        axis.title.y = element_text( size=14)
+  ) +
+   theme(panel.spacing = unit(2, "cm", data = NULL),
+         panel.spacing.y = unit(6, "mm"))
+
+
+ggplotly(line_plot)
+```
+<font size='4'>
+
++ Since 1 feb the concentration of pollutants was almost similar but in the middle of march the 2020 levels came down drastically for pollutants such as 
+PM2.5, PM10, NO , NO2, NOx , NH3 , BENZENE , TOLUENE , CO , SO2.
++ Ozone and Xylene haven't followed this pattern.
+
+
+</font>
+
+
+
+## BOXPLOT OF POLLUTANTS
+
+```{r preprocessing_4,echo=FALSE,fig.width=11,fig.height=11}
+
+u<-ggplot(k,aes(x=years,y=value,col=years)) + geom_boxplot()+
+          facet_wrap(.~pollutant,ncol=4,scales='free')
+ggplotly(u)
+```
+
+<font size = '4'>
+
++ We observe a clear reduction in concentration in most of the pollutants.
++ We see that variance of concentration of pollutants have increased in  the year 2020 and data seems to have become skewed towards lower side.
++ The observations of our line plot are supported from the boxplots.
++ Compared to others the dip in Ozone and Xylene is not clearly visible. 
+
+
+</font>
+
+
+## PROBABLITY DENSITY PLOTS 
+```{r preprocessing_5,echo=FALSE,fig.width=11,fig.height=11}
+
+n<-ggplot(k,aes(x=(value),col=years)) + geom_density()+
+  facet_wrap(.~pollutant,ncol=4,scales='free') 
+
+ggplotly(n)
+
+```
+<font size = '4'>
+
++ As shown by the boxplot the data of 2020  has skewed towards left side.
++ Most of the data doesn't seem to follow normal distribution.
++ Only NO2 , SO2 and O3 data from 2019 seems unskewed.
+</font>
+
+```{r diff, echo=FALSE, fig.width=11 , fig.height=10, warning=FALSE, message=FALSE }
+dif <- d_19[,4:15] - d_20[-29,4:15]
+dif[,13]= 1:120
+den_plot = melt(dif,id.vars ='V13')
+
+```
+
+## HYPOTHESIS TESTING
+
+
+<font size = '5'>
+
+
+Null Hypothes : The mean diffrence between  is less than or equal to zero.
+
+</font>
+
+<center>
+
+$H_{O}$ :  $\mu_{2019} - \mu_{2020} \leq 0$
+
+</center>
+
+<font size='5'>
+
+Alternate Hypothesis : The mean diffrence between  is greater than zero.
+
+</font>
+
+<center>
+          $H_{A}$ :  $\mu_{2019} - \mu_{2020} >  0$
+</center>
+
+
+
+
+
+## PROBABLITY DENSITY PLOT (DIFFRENCE)
+ 
+
+```{r preprocessing_6,,echo=FALSE, fig.width=11 , fig.height=10,warning=FALSE, message=FALSE}
+
+kol<-ggplot(den_plot,aes(x=value)) + geom_density() +
+  facet_wrap(.~variable,ncol=4,scales='free') + labs(x=expression(    pollutant(2019) - pollutant(2020))) +     theme(axis.title=element_text(size=14,face="bold"))
+
+ggplotly(kol)
+
+```
+<font size = '4'>
+
++ Except Xylene the diffrences density plot looks unskewed for all the pollutants.
++ Hence we will be able to apply paired t test for most our data
++ We will use shapiro wilk test to test normality of our data to see whether we can use t-test or not.
+
+</font>
+
+
+
+## Shapiro–Wilk test for Normality 
+ 
+
+```{r preprocessing_7,echo=FALSE,fig.width=11,fig.height=11}
+z1=mapply(shapiro.test,x=dif )
+dif <- log(d_19[,4:15]) - log(d_20[-29,4:15])
+z2=mapply(shapiro.test,x=dif )
+dif <- sqrt(d_19[,4:15]) - sqrt(d_20[-29,4:15])
+z3=mapply(shapiro.test,x=dif )
+stest<-data.frame(rbind(z1[2,1:12],z2[2,1:12],z3[2,1:12]))
+cupa=data.frame()
+supa = mapply(unlist,stest)
+cupa[1:3,1] = as.array(c('Unchanged','log Transformed' , 'sqrt transformed'))
+colnames(cupa)='Transformation'
+cupa[1:3,2:13]=supa[,1:12]
+colnames(cupa)[2:13]=colnames(supa)
+as.data.frame(cupa)
+
+
+
+
+```
+<font size = '4'>
+
+We applied this test on the unchanged ,log transformed and sqrt transformed data results are as shown above
+
++ Test on unchanged data shows all pollutant passed the test except NH3, O3 and Xylene .
++ On log transformed data most of the data passed the test except  NO2 and Xylene
++ On sqrt transormed data only Xylene and NH3 failed the test 
++ Therefore we will square root transform the Ozone data and log transform NH3 data before applying t test on it 
++ And for Xylene we will do will WILCOX TEST
+
+</font>
+
+```{r dataprep , echo=FALSE,fig.width=11,fig.height=11 }
+
+d_19$O3 <- sqrt(d_19$O3)
+d_20$O3 <- sqrt(d_20$O3)
+d_19$NH3 <- log (d_19$NH3)
+d_20$NH3<- log(d_20$NH3)
+dif <- (d_19[,4:15]) - (d_20[-29,4:15])
+
+```
+
+
+
+## t test on our data
+```{r preprocessing_8,echo=FALSE,fig.width=11,fig.height=11}
+
+kp=mapply(t.test,x=(d_19[,4:15]),y=(d_20[-29,4:15]),paired = TRUE, alternative = "greater" )
+(as.data.frame(kp[3,c(-12)]))
+
+```
+<font size = '4'>
+
+
++ From above results we can reject our null hypothesis for the above pollutants excepts Ozone. 
++ Barring Ozone , we have enough statistical evidence to state that covid 19 induced lockdown reduced the concentration of the above listed pollutants.
++ For our non normal pollutant data (Xylene) we will do wilcox test
+
+</font>
+ 
+
+
+## WILCOX TEST FOR NON NORMAL DATA
+
+```{r preprocessing_9,echo=FALSE,fig.width=11,fig.height=11}
+op<-mapply(wilcox.test,x=(d_19[,4:15]),y=(d_20[-29,4:15]),paired = TRUE, alternative = "greater")
+(as.data.frame(op[3,1:12]))
+
+```
+<font size = '4'>
+
++ In case Ozone  , p value is large enough hence we can't reject our null hypothesis. 
++ Based on the results above we can reject our null hypothesis for all the pollutants except Ozone.
++ Only in case of Ozone we have not enough statistical evidence to say that covid 19 lockdown reduced its concentration.
+
+</font>
+
+
+
+
+## CONCLUSION 
+
+<font size = '4'>
+
++ AQI deacreased drastically in since lockdown was imposed 
++ Most of the pollutant concentration came down except ozone and Xylene.
++ Our hypothesis test reveals that the average concentration of all pollutants was lower compared to previous year except for Ozone.
+
+
+<i> 
+<br>
+<br>
+
+The r markdown document can be found [here.](https://github.com/atulpandey352/STATISTICAL_AQI_ANALYSIS)
+
+</i>
+
+
+</font>
